@@ -4,16 +4,16 @@ clc
 
 % GENERATE SYNTHETIC DATA
 % Settings
-var_y = 1;            % Observation noise Variance
+var_y = 0.1;            % Observation noise Variance
 ps = 20;                 % Number of 0s in theta
-K = 30;                 % Number of available features
-var_features = 0.5;      % Range of input data H
+K = 50;                 % Number of available features
+var_features = 1;      % Range of input data H
 var_theta = 2;         % Variance of theta
-N = 300;                 % Number of data points
+N = 1000;                 % Number of data points
 p = K - ps;             % True model dimension
 
 % Initial batch of data
-n0 = K+1;
+n0 = 15;
 
 %Create data
 [y, X, theta] = generate_data(N, K, var_features, var_theta,  ps, var_y);
@@ -21,16 +21,17 @@ idx_h = find(theta ~= 0)';
 
 
 % LASSO from scratch
-
 [THETA, STATS] = lasso(X, y, 'CV', 10);
 THETA = THETA(:,STATS.Index1SE);
 lambda_standard = STATS.Lambda1SE;
 
 
-MaxIter = 3;
-D = inv(X(1:n0,:)'*X(1:n0,:));
+MaxIter = 1;
 XTy = X(1:n0,:)'*y(1:n0);
-theta_est = D*XTy;
+eyeK = eye(K);
+theta_init = mvnrnd(zeros(1,K), eyeK)';
+theta_est = theta_init;
+
 gj = XTy;
 % Denominators for each feature
 for j = 1:K
@@ -43,49 +44,25 @@ for j = 1:K
     gj(j) = gj(j) - X(1:n0,j)'*( X(1:n0, all_but_j{j})*theta_est(all_but_j{j}));
 end
 
-
-
-
-eyeK = eye(K);
-lambda = 2;
-for n = n0+1 : N
+for n = 2 : N
 
     % Receive new data point X(n)
-    g = D*X(n,:)';
-    g_bot = X(n,:)*g + var_y;
-    g = g/g_bot;
-    D = (eyeK - g*X(n,:))*D;
-
-    % Compute residual predictive error
-    e = (y(n) - X(n,:)*theta_est)^2;
-
-    % Compute theoretical pred error
-    non_zeros = (theta_est ~=0);
-    A = X(n,:)*D*sign(theta_est);
-    E = var_y + var_y*X(n,non_zeros)*D(non_zeros,non_zeros)*X(n,non_zeros)' + lambda^2*A^2;
-
-
-    % Evaluate lambda
-    tol = 1;
-    deltaE = e - E;
-    if deltaE > tol
-        lambda = sqrt(lambda^2 + deltaE*A^2);
-    elseif deltaE < - tol
-        lambda = sqrt(lambda^2 - deltaE*A^2);
-    else
-        lambda = lambda;
-    end
 
     % Update top
     gj = gj + X(n,:)'*y(n);
     %XTy = XTy + X(n,:)'*y(n);
 
     % Update Denominators for each feature
+    dj_old = dj;
     dj = dj + X(n,:).^2;
 
+    lambda = sqrt( sum(dj_old)*var_y );
+    lambda_store(n) = lambda;
+    
     for i = 1:MaxIter
 
-        for j = 1:K
+         for j = 1:K
+
 
             % Data term
             gj(j) = gj(j) - X(n,j)*( X(n,all_but_j{j})*theta_est(all_but_j{j})); 
@@ -97,9 +74,27 @@ for n = n0+1 : N
             % Update
             theta_est(j) = soft_threshold(term1, term2);
         end
+        theta_store(n,:) = theta_est;
     end
 
 
 
 end
+
+Nsz = length(theta_store(:,1));
+
+figure(1)
+plot(lambda_store)
+title('LAMBDA', 'FontSize', 20)
+
+%%
+figure;
+non_zeros = find(theta_est ~=0);
+k = datasample(1:K, 1);
+plot(theta(k)*ones(1,Nsz), 'k', 'LineWidth', 2)
+hold on
+plot(theta_store(:,k), 'r', 'LineStyle','--', 'Linewidth',1)
+hold on
+plot(THETA(k)*ones(1,Nsz), 'b', 'LineStyle','-.')
+
 
