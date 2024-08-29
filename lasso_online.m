@@ -4,28 +4,23 @@ clc
 
 % GENERATE SYNTHETIC DATA
 % Settings
-var_y = 0.1;            % Observation noise Variance
-ps = 20;                 % Number of 0s in theta
-K = 50;                 % Number of available features
+var_y = 0.5;            % Observation noise Variance
+ps = 10;                 % Number of 0s in theta
+K = 25;                 % Number of available features
 var_features = 1;      % Range of input data H
 var_theta = 2;         % Variance of theta
-N = 1000;                 % Number of data points
+N = 700;                 % Number of data points
 p = K - ps;             % True model dimension
 
 % Initial batch of data
-n0 = 15;
+n0 = 3;
 
 %Create data
 [y, X, theta] = generate_data(N, K, var_features, var_theta,  ps, var_y);
 idx_h = find(theta ~= 0)';
 
 
-% LASSO from scratch
-[THETA, STATS] = lasso(X, y, 'CV', 10);
-THETA = THETA(:,STATS.Index1SE);
-lambda_standard = STATS.Lambda1SE;
-
-
+%% RERUNs 
 MaxIter = 1;
 XTy = X(1:n0,:)'*y(1:n0);
 eyeK = eye(K);
@@ -44,19 +39,27 @@ for j = 1:K
     gj(j) = gj(j) - X(1:n0,j)'*( X(1:n0, all_but_j{j})*theta_est(all_but_j{j}));
 end
 
-for n = 2 : N
+for n = n0+1 : N
+
+    % Standard LASSO
+    % LASSO from scratch
+    [THETA, STATS] = lasso(X(1:n,:), y(1:n), 'CV', min(10, n));
+    theta_lasso(n,:) = THETA(:,STATS.IndexMinMSE);
 
     % Receive new data point X(n)
 
     % Update top
     gj = gj + X(n,:)'*y(n);
-    %XTy = XTy + X(n,:)'*y(n);
 
     % Update Denominators for each feature
     dj_old = dj;
     dj = dj + X(n,:).^2;
 
-    lambda = sqrt( sum(dj_old)*var_y );
+    %lambda = sqrt( sum(dj_old + dj_old.^2/(X(n,:).^2))*var_y );
+    %lambda = sqrt( var_y*sum( dj_old.* ( dj_old./(X(n,:).^2) + 1) )  );
+   lambda = sqrt(sum(dj_old)*var_y);
+   %lambda = sqrt(sum(abs(X(n,:)))/var_y);
+    %lambda = sum(abs(X(n,:)).^2)/var_y;
     lambda_store(n) = lambda;
     
     for i = 1:MaxIter
@@ -89,12 +92,26 @@ title('LAMBDA', 'FontSize', 20)
 
 %%
 figure;
-non_zeros = find(theta_est ~=0);
-k = datasample(1:K, 1);
-plot(theta(k)*ones(1,Nsz), 'k', 'LineWidth', 2)
+non_zeros = find(theta ~=0);
+k = datasample(non_zeros, 1);
+for k = 1:length(non_zeros)
+    plot(theta(non_zeros(k))*ones(1,Nsz), 'k', 'LineWidth', 2)
+    hold on
+    plot(theta_store(:,non_zeros(k)), 'r', 'LineStyle','--', 'Linewidth',1)
+    hold on
+    plot(theta_lasso(:,non_zeros(k))*ones(1,Nsz), 'b', 'LineStyle','-.')
+end
+
+figure;
+idx_zeros = find(theta == 0);
+yline(0, 'k', 'LineWidth',1)
 hold on
-plot(theta_store(:,k), 'r', 'LineStyle','--', 'Linewidth',1)
-hold on
-plot(THETA(k)*ones(1,Nsz), 'b', 'LineStyle','-.')
+for k = 1:length(idx_zeros)
+    plot(theta_store(:,idx_zeros(k)), 'r', 'LineStyle','--', 'Linewidth',1);
+    hold on
+    plot(theta_lasso(:,idx_zeros(k))*ones(1,Nsz), 'b', 'LineStyle','-.');
+end
+
+
 
 
