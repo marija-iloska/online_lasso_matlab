@@ -4,37 +4,60 @@ clc
 
 % GENERATE SYNTHETIC DATA
 % Settings
-var_y = 1;            % Observation noise Variance
-ps = 11;                 % Number of 0s in theta
+var_y = 1;              % Observation noise Variance
+ps = 11;                % Number of 0s in theta
 K = 17;                 % Number of available features
-var_features = 1;      % Range of input data H
-var_theta = 2;         % Variance of theta
-N = 500;                 % Number of data points
-N_test = 300;
+var_features = 1;       % Variance of input features X
+var_theta = 2;          % Variance of theta
+N = 500;                % Number of training data points
+N_test = 300;           % Number of test data points
 p = K - ps;             % True model dimension
 
 % Initial batch of data
 n0 = 5;
 
-%Create data
+% Create data
 [y, X, theta, y_test, X_test] = generate_data(N, N_test, K, var_features, var_theta,  ps, var_y);
 idx_h = find(theta ~= 0)';
 
 
-%% RERUNs 
-MaxIter = 1;
-XTy = X(1:n0,:)'*y(1:n0);
-eyeK = eye(K);
 
-[THETA, STATS] = lasso(X(1:n0,:), y(1:n0), 'CV', min(10, n0));
-%theta_init = THETA(:,STATS.IndexMinMSE);
-theta_init = mvnrnd(zeros(1,K), 0.1*eyeK)';
+%% INITIAL LASSO ESTIMATE
+[B, STATS] = lasso(X(1:n0,:), y(1:n0), 'CV', min(n0,10));
+theta_init = B(:, STATS.IndexMinMSE);
+
+
+%% OLinLASSO init
+
+% Initial batch start
+theta_olin = theta_init;
+
+% Initial batch olin temrs
+xy0 = X(1:n0,:)'*y(1:n0);
+xx0 = X(1:n0,:)'*X(1:n0,:);
+
+% Step Size
+step = 0.01*n0/max(real(eig(xx0)));
+
+% Tolerance
+epsilon = 1e-4;
+
+% Initialize terms
+xy_olin = zeros(K,1);
+xx_olin = zeros(K,K);
+
+
+%% PROPOSED METHOD INITIALIZE
+
+% Initial batch start
 theta_prop = theta_init;
 
-xy = XTy;
+% Define initial terms
+xy = xy0;
+xx = sum((X(1:n0,:).*X(1:n0,:)),1);
+
 % Denominators for each feature
 for j = 1:K
-    xx(j) = (X(1:n0,j)'*X(1:n0,j));
 
     % Indexes of all elements except jth
     all_but_j{j} = setdiff(1:K, j);
@@ -44,133 +67,90 @@ for j = 1:K
 end
 
 
-correct = [];
-incorrect = [];
-correct_las = [];
-incorrect_las = [];
-
-mse_prop = [];
-mse_lasso = [];
+%% Stream data
 
 for n = n0+1 : N
 
+    % Receive new data point Xn, yn
+    Xn = X(n,:);
+    yn = y(n);
 
-    % Standard LASSO
-    [THETA, STATS] = lasso(X(1:n,:), y(1:n), 'CV', min(10, n));
-    theta_lasso(n,:) = THETA(:,STATS.IndexMinMSE);
+    % Standard LASSO - uses all points UP to n OFFLINE
+    [theta_lasso, STATS] = lasso(X(1:n,:), y(1:n), 'CV', min(10, n));
+    theta_lasso = theta_lasso(:,STATS.IndexMinMSE);
+    theta_lasso_store(n,:) = theta_lasso;
+    clear STATS
 
-    % Receive new data point X(n)
-    [theta_prop, xx, xy] = online_predictive_lasso(y(n), X(n,:), xx, xy, theta_prop, all_but_j, var_y, K);
-    theta_store(n,:) = theta_prop;
+    % Call proposed online predictive lasso
+    [theta_prop, xx, xy] = online_predictive_lasso(yn, Xn, xx, xy, theta_prop, all_but_j, var_y, K);
+    theta_prop_store(n,:) = theta_prop;
 
-%     % Update top
-%     gj = gj + X(n,:)'*y(n);
-% 
-%     % Update Denominators for each feature
-%     dj_old = dj;
-%     dj = dj + X(n,:).^2;
-% 
-%     lambda = sqrt(sum(dj_old)*var_y);
-% 
-%     lambda_store(n) = lambda;
-%     
-%     for i = 1:MaxIter
-% 
-%          for j = 1:K
-% 
-%             % Data term
-%             gj(j) = gj(j) - X(n,j)*( X(n,all_but_j{j})*theta_est(all_but_j{j})); 
-%             term1 = gj(j)/dj(j);
-% 
-%             % Penalty term
-%             term2 = lambda/dj(j);
-% 
-%             % Update
-%             theta_est(j) = soft_threshold(term1, term2);
-%         end
-%         theta_store(n,:) = theta_est;
-%     end
+    % Call online linearized lasso
+    [theta_olin, xx_olin, xy_olin] = olin_lasso(yn, Xn, xy0, xx0, xy_olin, xx_olin, theta_olin, epsilon, step, n0, n, K);
+    theta_olin_store(n,:) = theta_olin;
 
 
-    idx_prop = find(theta_prop ~= 0)';
-    correct(end+1) = sum(ismember(idx_prop, idx_h));
-    incorrect(end+1) = length(idx_prop) - correct(end);
+    % Evaluate models
+    [correct_prop(n-n0), incorrect_prop(n-n0), mse_prop(n-n0)] = metrics(theta_prop, idx_h, y_test, X_test);
+    [correct_lasso(n-n0), incorrect_lasso(n-n0), mse_lasso(n-n0)] = metrics(theta_lasso, idx_h, y_test, X_test);
+    [correct_olin(n-n0), incorrect_olin(n-n0), mse_olin(n-n0)] = metrics(theta_olin, idx_h, y_test, X_test);
 
-    idx_lasso = find(theta_lasso(n,:) ~= 0);
-    correct_las(end+1) = sum(ismember(idx_lasso, idx_h));
-    incorrect_las(end+1) = length(idx_lasso) - correct_las(end);
-
-
-
-    y_prop = X_test*theta_prop;
-    y_lasso = X_test*theta_lasso(n,:)';
-   
-    
-    mse_prop(end+1) = mean((y_test - y_prop).^2);
-    mse_lasso(end+1) = mean((y_test - y_lasso).^2);
-    
-
-    
 
 end
 
-
-epsilon = 1e-3;
-
-
-[theta_olin, idx_prop, J_olin, plot_stats, mse_olin, y_olin] = olasso(y, X, n0, epsilon, var_y, find(theta~=0), X_test, y_test);
-theta_lasso_est = theta_lasso(end,:)';
-theta_olin_est = theta_olin(end,:)';
-
-stats_prop = [correct; incorrect];
-stats_lasso = [correct_las; incorrect_las];
-
-[correct_olin, incorrect_olin] = plot_stats{:};
+% Concatenate feature evals
+stats_prop = [correct_prop; incorrect_prop];
+stats_lasso = [correct_lasso; incorrect_lasso];
 stats_olin = [correct_olin; incorrect_olin];
 
 
 
+%% PERFORMANCE PLOTS
+Nsz = length(theta_prop_store(:,1));
 
+% Plot coefficient convergences of non-0 coeffs
 
-% figure(1)
-% plot(lambda_store)
-% title('LAMBDA', 'FontSize', 20)
-
-%%
-Nsz = length(theta_store(:,1));
+% Number of plots
+I = 3;
 figure;
 non_zeros = find(theta ~=0);
 k = datasample(non_zeros, 3, 'replace', false);
-for i = 1:3
-    plot(theta(k(i))*ones(1,Nsz), 'k', 'LineWidth', 2)
+for i = 1:I
+    subplot(3,2,2*i-1)
     hold on
-    plot(theta_store(:,k(i)), 'r', 'LineStyle','--', 'Linewidth',1)
-    hold on
-    plot(theta_lasso(:,k(i))*ones(1,Nsz), 'b', 'LineStyle','-.')
-    hold on
-    plot(theta_olin(:,k(i))*ones(1,Nsz), 'g', 'LineStyle','-');
+    plot(theta(k(i))*ones(1,Nsz), 'k', 'LineWidth', 1)
+    plot(theta_prop_store(:,k(i)), 'r', 'LineStyle','--', 'Linewidth',1)
+    plot(theta_lasso_store(:,k(i)), 'b', 'LineStyle','-.')
+    plot(theta_olin_store(:,k(i)), 'g', 'LineStyle','-');
+    str_k = join(['\theta_{', num2str(k(i)), '}']);
+    ylabel(str_k, 'FontSize', 20)
+    hold off
 end
+xlabel('Number of data points', 'FontSize', 20)
+ylabel('\theta', 'FontSize', 20)
+legend('True', 'Proposed', 'LASSO', 'OLinLASSO', 'FontSize', 10)
 
-figure;
+
+% Plot coefficient convergences of 0 coeffs
 idx_zeros = find(theta == 0);
 k = datasample(idx_zeros, 3, 'replace', false);
-yline(0, 'k', 'LineWidth',1)
-hold on
-for i = 1:3
-    plot(theta_store(:,k(i)), 'r', 'LineStyle','--', 'Linewidth',1);
+for i = 1:I
+    subplot(3,2,2*i)
     hold on
-    plot(theta_lasso(:,k(i))*ones(1,Nsz), 'b', 'LineStyle','-.');
-    hold on
-    plot(theta_olin(:,k(i))*ones(1,Nsz), 'g', 'LineStyle','-');
+    yline(0, 'k', 'LineWidth',1)
+    plot(theta_prop_store(:,k(i)), 'r', 'LineStyle','--', 'Linewidth',1);
+    plot(theta_lasso_store(:,k(i)), 'b', 'LineStyle','-.');
+    plot(theta_olin_store(:,k(i)), 'g', 'LineStyle','-');
+    hold off
+    str_k = join(['\theta_{', num2str(k(i)), '}']);
+    ylabel(str_k, 'FontSize', 20)
 end
+sgtitle('Convergence of Coefficients', 'FontSize', 15)
+xlabel('Number of data points', 'FontSize', 20)
+
+legend('True', 'Proposed', 'LASSO', 'OLinLASSO', 'FontSize', 10)
 
 
-% figure;
-% hold on
-% plot(J_proposed, 'r', 'LineWidth',1)
-% plot(J_olin, 'g', 'Linewidth',1)
-% plot(J_lasso, 'b', 'Linewidth',1)
-% hold off
 
 figure;
 hold on
@@ -199,7 +179,7 @@ figure('Renderer', 'painters', 'Position', [200 300 1500 400])
 
 % JPLS
 subplot(1,3,1)
-formats = {fsz, fszl, lwdt, c_tpls, c_inc, c_true, 'PROP'};
+formats = {fsz, fszl, lwdt, c_tpls, c_inc, c_true, 'PROPOSED'};
 bar_plots(stats_prop, n0+1, N, p, K, formats)
 
 % OLinLASSO

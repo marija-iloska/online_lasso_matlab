@@ -1,28 +1,33 @@
-function [theta, loss] = olin_lasso(xy0, xx0, xy, xx, theta, epsilon, step, t0, t, p)
+function [theta, xx, xy] = olin_lasso(yn, Xn, xy0, xx0, xy, xx, theta, epsilon, step, n0, n, p)
+
+
+
+xx = xx + Xn'*Xn;
+xy = xy + Xn'*yn;  
 
 % Current gradient
-grad = (xx*theta - xy)/t;
-grad_init = (xx0*theta - xy0)/t0;
+grad = (xx*theta - xy)/n;
+grad_init = (xx0*theta - xy0)/n0;
 
 % Gradient difference
 phi = grad - grad_init;
 
 % Penalty param
-lambda = (log(p)/t)^0.5;
+lambda = (log(p)/n)^0.5;
 
 loss = Inf;
 loss_store = [];
 while loss > epsilon
 
     if length(loss_store) > 2000
-        error(message('I am stuck'))
+        error(message('Cannot converge. Either decrease step size or increase tolerance.'))
     end
 
     % Store old theta
     theta_old = theta;
 
     % Update steps
-    temp = theta - step*( phi + (xx0*theta - xy0)/t0 );
+    temp = theta - step*( phi + (xx0*theta - xy0)/n0 );
     theta = sign(temp).*max(0, abs(temp) - lambda*step);
 
     % Loss update
