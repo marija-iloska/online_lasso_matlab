@@ -4,17 +4,17 @@ clc
 
 % GENERATE SYNTHETIC DATA
 % Settings
-var_y = 1;              % Observation noise Variance
-ps = 11;                % Number of 0s in theta
-K = 17;                 % Number of available features
+var_y = 2;              % Observation noise Variance
+ps = 17;                % Number of 0s in theta
+K = 30;                 % Number of available features
 var_features = 1;       % Variance of input features X
-var_theta = 2;          % Variance of theta
-N = 500;                % Number of training data points
-N_test = 300;           % Number of test data points
+var_theta = 1;          % Variance of theta
+N = 3000;                % Number of training data points
+N_test = 500;           % Number of test data points
 p = K - ps;             % True model dimension
 
 % Initial batch of data
-n0 = 5;
+n0 = 4;
 
 % Create data
 [y, X, theta, y_test, X_test] = generate_data(N, N_test, K, var_features, var_theta,  ps, var_y);
@@ -77,7 +77,7 @@ for n = n0+1 : N
 
     % Standard LASSO - uses all points UP to n OFFLINE
     [theta_lasso, STATS] = lasso(X(1:n,:), y(1:n), 'CV', min(10, n));
-    theta_lasso = theta_lasso(:,STATS.IndexMinMSE);
+    theta_lasso = theta_lasso(:,STATS.Index1SE);
     theta_lasso_store(n,:) = theta_lasso;
     clear STATS
 
@@ -91,9 +91,9 @@ for n = n0+1 : N
 
 
     % Evaluate models
-    [correct_prop(n-n0), incorrect_prop(n-n0), mse_prop(n-n0)] = metrics(theta_prop, idx_h, y_test, X_test);
-    [correct_lasso(n-n0), incorrect_lasso(n-n0), mse_lasso(n-n0)] = metrics(theta_lasso, idx_h, y_test, X_test);
-    [correct_olin(n-n0), incorrect_olin(n-n0), mse_olin(n-n0)] = metrics(theta_olin, idx_h, y_test, X_test);
+    [correct_prop(n-n0), incorrect_prop(n-n0), mse_prop(n-n0), fs_prop(n-n0)] = metrics(theta_prop, theta, K, idx_h, y_test, X_test);
+    [correct_lasso(n-n0), incorrect_lasso(n-n0), mse_lasso(n-n0), fs_lasso(n-n0)] = metrics(theta_lasso, theta, K, idx_h, y_test, X_test);
+    [correct_olin(n-n0), incorrect_olin(n-n0), mse_olin(n-n0), fs_olin(n-n0)] = metrics(theta_olin, theta, K, idx_h, y_test, X_test);
 
 
 end
@@ -105,7 +105,7 @@ stats_olin = [correct_olin; incorrect_olin];
 
 
 
-%% PERFORMANCE PLOTS
+%% COEFFICIENT PLOTS
 Nsz = length(theta_prop_store(:,1));
 
 % Plot coefficient convergences of non-0 coeffs
@@ -126,8 +126,7 @@ for i = 1:I
     ylabel(str_k, 'FontSize', 20)
     hold off
 end
-xlabel('Number of data points', 'FontSize', 20)
-ylabel('\theta', 'FontSize', 20)
+xlabel('n^{th} data point arrival', 'FontSize', 15)
 legend('True', 'Proposed', 'LASSO', 'OLinLASSO', 'FontSize', 10)
 
 
@@ -146,20 +145,32 @@ for i = 1:I
     ylabel(str_k, 'FontSize', 20)
 end
 sgtitle('Convergence of Coefficients', 'FontSize', 15)
-xlabel('Number of data points', 'FontSize', 20)
+xlabel('n^{th} data point arrival', 'FontSize', 15)
 
 legend('True', 'Proposed', 'LASSO', 'OLinLASSO', 'FontSize', 10)
 
-
+%% MSE plots
 
 figure;
+subplot(1,2,1)
 hold on
 plot(mse_prop, 'r', 'LineWidth',1)
 plot(mse_olin, 'g', 'Linewidth',1)
 plot(mse_lasso, 'b', 'Linewidth',1)
 hold off
-title('MSE on Test Data', 'FontSize',15)
+ylabel('MSE on Test Data', 'FontSize',15)
+xlabel('n^{th} data point arrival', 'FontSize',15)
+legend('Proposed', 'OLinLASSO', 'LASSO', 'FontSize', 10)
 
+subplot(1,2,2)
+hold on
+plot(fs_lasso, 'b', 'LineWidth',1)
+plot(fs_olin, 'g', 'Linewidth',1)
+plot(fs_prop, 'r', 'Linewidth',1)
+hold off
+ylabel('F-Score', 'FontSize',15)
+xlabel('n^{th} data point arrival', 'FontSize',15)
+legend('LASSO', 'OLinLASSO', 'Proposed', 'FontSize', 10)
 
 %%  BAR PLOTS
 
