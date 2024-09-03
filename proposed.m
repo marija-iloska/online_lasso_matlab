@@ -4,13 +4,13 @@ clc
 
 % GENERATE SYNTHETIC DATA
 % Settings
-var_y = 2;              % Observation noise Variance
-ps = 17;                % Number of 0s in theta
+var_y = 0.1;              % Observation noise Variance
+ps = 18;                % Number of 0s in theta
 K = 30;                 % Number of available features
 var_features = 1;       % Variance of input features X
 var_theta = 1;          % Variance of theta
-N = 3000;                % Number of training data points
-N_test = 500;           % Number of test data points
+N = 700;                % Number of training data points
+N_test = 200;           % Number of test data points
 p = K - ps;             % True model dimension
 
 % Initial batch of data

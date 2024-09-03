@@ -6,6 +6,7 @@ xy = xy + Xn'*yn;
 % Update Denominators for each feature
 lambda = sqrt(sum(xx)*var_y);
 
+
 xx = xx + Xn.^2;
 
  for j = 1:K
