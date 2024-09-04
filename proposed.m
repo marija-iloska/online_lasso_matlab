@@ -5,16 +5,16 @@ clc
 % GENERATE SYNTHETIC DATA
 % Settings
 var_y = 0.1;              % Observation noise Variance
-ps = 18;                % Number of 0s in theta
-K = 30;                 % Number of available features
+ps = 11;                % Number of 0s in theta
+K = 20;                 % Number of available features
 var_features = 1;       % Variance of input features X
 var_theta = 1;          % Variance of theta
-N = 700;                % Number of training data points
-N_test = 200;           % Number of test data points
+N = 800;                % Number of training data points
+N_test = 300;           % Number of test data points
 p = K - ps;             % True model dimension
 
 % Initial batch of data
-n0 = 4;
+n0 = 5;
 
 % Create data
 [y, X, theta, y_test, X_test] = generate_data(N, N_test, K, var_features, var_theta,  ps, var_y);
@@ -25,6 +25,7 @@ idx_h = find(theta ~= 0)';
 %% INITIAL LASSO ESTIMATE
 [B, STATS] = lasso(X(1:n0,:), y(1:n0), 'CV', min(n0,10));
 theta_init = B(:, STATS.IndexMinMSE);
+clear B STATS
 
 
 %% OLinLASSO init
@@ -40,7 +41,7 @@ xx0 = X(1:n0,:)'*X(1:n0,:);
 step = 0.01*n0/max(real(eig(xx0)));
 
 % Tolerance
-epsilon = 1e-4;
+epsilon = 1e-3;
 
 % Initialize terms
 xy_olin = zeros(K,1);
@@ -76,17 +77,23 @@ for n = n0+1 : N
     yn = y(n);
 
     % Standard LASSO - uses all points UP to n OFFLINE
+    tic
     [theta_lasso, STATS] = lasso(X(1:n,:), y(1:n), 'CV', min(10, n));
+    time_lasso(n-n0) = toc;
     theta_lasso = theta_lasso(:,STATS.Index1SE);
     theta_lasso_store(n,:) = theta_lasso;
     clear STATS
 
     % Call proposed online predictive lasso
+    tic
     [theta_prop, xx, xy] = online_predictive_lasso(yn, Xn, xx, xy, theta_prop, all_but_j, var_y, K);
+    time_prop(n-n0) = toc;
     theta_prop_store(n,:) = theta_prop;
 
     % Call online linearized lasso
+    tic
     [theta_olin, xx_olin, xy_olin] = olin_lasso(yn, Xn, xy0, xx0, xy_olin, xx_olin, theta_olin, epsilon, step, n0, n, K);
+    time_olin(n-n0) = toc;
     theta_olin_store(n,:) = theta_olin;
 
 
