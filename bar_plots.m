@@ -14,7 +14,7 @@ set(gca, 'FontSize', 15)
 legend('Correct', 'Incorrect', 'True Dim', 'FontSize', fszl)
 title(title_str, 'FontSize', 20)
 ylabel('Number of Features ', 'FontSize', fsz)
-xlabel('Time', 'FontSize', fsz)
+xlabel('n^{th} data point arrival', 'FontSize',15)
 box on
 
 
