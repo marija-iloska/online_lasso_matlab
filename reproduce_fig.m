@@ -3,7 +3,7 @@ close all
 clc
 
 % Add the paths
-addpath(genpath('util/'))
+addpath(genpath('util/'), genpath('baselines/'))
 
 % GENERATE SYNTHETIC DATA
 
