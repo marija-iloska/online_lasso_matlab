@@ -27,6 +27,13 @@ idx_h = find(theta ~= 0)';
 theta_init = B(:, STATS.IndexMinMSE);
 clear B STATS
 
+lambda0 = sqrt(var_y*sum(X.*X,'all')/(N*N) );
+[B, STATS] = lasso(X, y, 'lambda',  lambda0 );
+theta_init = B(:, end);
+
+[B, STATS] = lasso(X, y, 'CV', 10);
+theta_cv = B(:, STATS.Index1SE);
+lambda_offline = STATS.Lambda1SE;
 
 %% OLinLASSO init
 
