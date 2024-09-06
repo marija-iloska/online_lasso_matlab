@@ -1,10 +1,9 @@
-function [theta, xx, xy] = online_predictive_lasso(yn, Xn, xx, xy, theta, all_but_j, var_y, K)
+function [theta, xx, xy] = online_lasso(yn, Xn, xx, xy, theta, all_but_j, var_y, K)
 
 % Update top
 xy = xy + Xn'*yn;
 
 lambda = sqrt(sum(xx)*var_y);
-%lambda = sum(sqrt(xx));
 
 % Update Denominators for each feature
 xx = xx + Xn.^2;

@@ -2,14 +2,18 @@ clear all
 close all
 clc
 
+% Add the paths
+addpath(genpath('util/'))
+
 % GENERATE SYNTHETIC DATA
+
 % Settings
 var_y = 0.1;              % Observation noise Variance
-ps = 11;                % Number of 0s in theta
-K = 20;                 % Number of available features
+ps = 3;                % Number of 0s in theta
+K = 7;                 % Number of available features
 var_features = 1;       % Variance of input features X
 var_theta = 1;          % Variance of theta
-N = 800;                % Number of training data points
+N = 100;                % Number of training data points
 N_test = 300;           % Number of test data points
 p = K - ps;             % True model dimension
 
@@ -93,7 +97,7 @@ for n = n0+1 : N
 
     % Call proposed online predictive lasso
     tic
-    [theta_prop, xx, xy] = online_predictive_lasso(yn, Xn, xx, xy, theta_prop, all_but_j, var_y, K);
+    [theta_prop, xx, xy] = online_lasso(yn, Xn, xx, xy, theta_prop, all_but_j, var_y, K);
     time_prop(n-n0) = toc;
     theta_prop_store(n,:) = theta_prop;
 
@@ -202,9 +206,9 @@ time_plot = n0+1:N;
 % BAR PLOTS SPECIFIC RUN =========================================
 figure('Renderer', 'painters', 'Position', [200 300 1500 400])
 
-% JPLS
+% Online LASSO proposed
 subplot(1,3,1)
-formats = {fsz, fszl, lwdt, c_tpls, c_inc, c_true, 'PROPOSED'};
+formats = {fsz, fszl, lwdt, c_olasso, c_inc, c_true, 'PROPOSED'};
 bar_plots(stats_prop, n0+1, N, p, K, formats)
 
 % OLinLASSO
@@ -214,7 +218,8 @@ bar_plots(stats_olin, n0+1, N, p, K, formats)
 
 % LASSO
 subplot(1,3,3)
-formats = {fsz, fszl, lwdt, c_mcmc, c_inc, c_true, 'LASSO'};
+formats = {fsz, fszl, lwdt, c_lasso, c_inc, c_true, 'LASSO'};
 bar_plots(stats_lasso, n0+1, N, p, K, formats)
 
+clear all
 
