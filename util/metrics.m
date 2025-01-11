@@ -1,4 +1,4 @@
-function [correct, incorrect, mse, fscore] = metrics(theta_est, theta, K, idx_true, y_test, X_test)
+function [correct, incorrect, mse, fscore, mse_theta] = metrics(theta_est, theta, K, idx_true, y_test, X_test)
 
 % Feature calculation
 idx = find(theta_est ~= 0)';
@@ -8,6 +8,9 @@ incorrect = length(idx) - correct;
 % MSE on Test Data
 y_pred = X_test*theta_est;
 mse = mean((y_test - y_pred).^2);
+
+
+mse_theta = mean((theta - theta_est).^2);
 
 % Fscore
 theta_est = (theta_est ~= zeros(K,1));
