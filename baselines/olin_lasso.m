@@ -1,4 +1,4 @@
-function [theta, xx, xy] = olin_lasso(yn, Xn, xy0, xx0, xy, xx, theta, epsilon, step, n0, n, p)
+function [theta, xx, xy, lambda] = olin_lasso(yn, Xn, xy0, xx0, xy, xx, theta, epsilon, step, n0, n, p)
 
 
 
