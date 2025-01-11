@@ -2,6 +2,9 @@ clear all
 close all
 clc
 
+% Add the paths
+addpath(genpath('util/'), genpath('proposed_method/'))
+
 % GENERATE SYNTHETIC DATA
 % Settings
 var_y = 1;              % Observation noise Variance
@@ -9,7 +12,7 @@ ps = 5;                 % Number of 0s in theta
 P = 20;                 % Number of available features
 var_features = 1;       % Variance of input features X
 var_theta = 1;          % Variance of theta
-N = 800;                % Number of training data points
+N = 1000;                % Number of training data points
 N_test = 300;           % Number of test data points
 p = P - ps;             % True model dimension
 
@@ -24,8 +27,7 @@ idx_h = find(theta ~= 0)';
 %% PROPOSED METHOD INITIALIZE
 
 % Initial batch start
-theta_init = zeros(P,1);
-theta_prop = theta_init;
+theta_prop = zeros(P,1);
 
 % Define initial terms
 xy = zeros(P,1);
@@ -39,25 +41,23 @@ end
 
 
 %% Stream data
+tic
 
 for n = n0+1 : N
 
-    % Receive new data point Xn, yn
+    % Receive new data point X(n,:), y(n)
     Xn = X(n,:);
     yn = y(n);
 
-    % Call proposed online predictive lasso
-    tic
-    [theta_prop, xx, xy] = online_predictive_lasso(yn, Xn, xx, xy, theta_prop, all_but_j, var_y, P);
-    time_prop(n-n0) = toc;
-    theta_prop_store(n,:) = theta_prop;
-
+    % Call proposed method
+    [theta_prop, xx, xy] = online_lasso(yn, Xn, xx, xy, theta_prop, all_but_j, var_y, P);
 
     % Evaluate models
     [correct_prop(n-n0), incorrect_prop(n-n0), mse_prop(n-n0), fs_prop(n-n0)] = metrics(theta_prop, theta, P, idx_h, y_test, X_test);
  
 
 end
+toc
 
 % Concatenate feature evals
 stats_prop = [correct_prop; incorrect_prop];
@@ -65,79 +65,38 @@ stats_prop = [correct_prop; incorrect_prop];
 
 
 
-%% COEFFICIENT PLOTS
-Nsz = length(theta_prop_store(:,1));
+%% PLOTS
 
-% Plot coefficient convergences of non-0 coeffs
-
-% Number of plots
-I = 3;
-figure;
-non_zeros = find(theta ~=0);
-k = datasample(non_zeros, 3, 'replace', false);
-for i = 1:I
-    subplot(3,2,2*i-1)
-    hold on
-    plot(theta(k(i))*ones(1,Nsz), 'k', 'LineWidth', 1)
-    plot(theta_prop_store(:,k(i)), 'r', 'LineStyle','--', 'Linewidth',1)
-    str_k = join(['\theta_{', num2str(k(i)), '}']);
-    ylabel(str_k, 'FontSize', 20)
-    hold off
-end
-xlabel('n^{th} data point arrival', 'FontSize', 15)
-
-
-% Plot coefficient convergences of 0 coeffs
-idx_zeros = find(theta == 0);
-k = datasample(idx_zeros, 3, 'replace', false);
-for i = 1:I
-    subplot(3,2,2*i)
-    hold on
-    yline(0, 'k', 'LineWidth',1)
-    plot(theta_prop_store(:,k(i)), 'r', 'LineStyle','--', 'Linewidth',1);
-    hold off
-    str_k = join(['\theta_{', num2str(k(i)), '}']);
-    ylabel(str_k, 'FontSize', 20)
-end
-sgtitle('Convergence of Coefficients', 'FontSize', 15)
-xlabel('n^{th} data point arrival', 'FontSize', 15)
-
-%% MSE plots
-
-figure;
-subplot(1,2,1)
-hold on
-plot(mse_prop, 'r', 'LineWidth',1)
-hold off
-ylabel('MSE on Test Data', 'FontSize',15)
-xlabel('n^{th} data point arrival', 'FontSize',15)
-
-subplot(1,2,2)
-hold on
-plot(fs_prop, 'r', 'Linewidth',1)
-hold off
-ylabel('F-Score', 'FontSize',15)
-xlabel('n^{th} data point arrival', 'FontSize',15)
-
-%%  BAR PLOTS
-
-% Colors, FontSizes, Linewidths
+% Fromatting and colors
 load plot_settings.mat
-
-fsz = 20;
-fszl = 18;
-
-% Time range to plot
-time_plot = n0+1:N;
+fsz = 17;
+fszl = 15;
+fszg = 13;
 
 
-
-% BAR PLOTS SPECIFIC RUN =========================================
+% Create figure 
 figure('Renderer', 'painters', 'Position', [200 300 1500 400])
 
-% JPLS
+% MSE on test data 
+subplot(1,3,3)
+plot(mse_prop, 'r', 'LineWidth',2)
+set(gca, 'FontSize',fszg)
+ylabel('MSE on Test Data', 'FontSize',fszl)
+xlabel('n^{th} data point arrival', 'FontSize',fszl)
+
+% F-Score
+subplot(1,3,2)
+plot(fs_prop, 'r', 'Linewidth',2)
+set(gca, 'FontSize',fszg)
+ylabel('F-Score', 'FontSize',fszl)
+xlabel('n^{th} data point arrival', 'FontSize',fszl)
+ylim([0,1])
+
+% Bar plots
 subplot(1,3,1)
-formats = {fsz, fszl, lwdt, c_tpls, c_inc, c_true, 'PROPOSED'};
+formats = {fsz, fszl, fszg, lwdt, c_olasso, c_inc, c_true, ''};
 bar_plots(stats_prop, n0+1, N, p, P, formats)
+
+sgtitle('Proposed Online LASSO', 'FontSize', fsz)
 
 
