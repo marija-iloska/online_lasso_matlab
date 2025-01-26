@@ -7,14 +7,14 @@ addpath(genpath('util/'), genpath('baselines/'))
 
 % GENERATE SYNTHETIC DATA
 
-R = 4;
+R = 100;
 
 % Settings
 var_y = 1;              % Observation noise Variance
-num_zeros = 12;                % Number of 0s in theta
-P = 30;                 % Number of available features
+num_zeros = 75;                % Number of 0s in theta
+P = 100;                 % Number of available features
 var_features = 1;       % Variance of input features X
-var_theta = 1;          % Variance of theta
+var_theta = 3;          % Variance of theta
 N = 10000;                % Number of training data points
 N_test = 200;           % Number of test data points
 p = P - num_zeros;             % True model dimension
@@ -99,32 +99,84 @@ time_plot = n0+1:N;
 
 % PLOTS
 % Figure size and position
-figure(1);
-set(gcf, 'Position', [100, 30, 400, 1200]);
+% figure;
+% set(gcf, 'Position', [100, 30, 400, 1200]);
+% 
+% % Tiled layout for tighter subplots
+% tiledlayout(5, 1, 'TileSpacing', 'Compact', 'Padding', 'Compact')
+% 
+% 
+% % First plot: bar plot Proposed Online LASSO
+% nexttile
+% formats = {fsz, fszl, fszg, lwdt, c_olasso, c_inc, c_true, 'Proposed Online LASSO'};
+% bar_plots(stats_prop(:, time_plot), time_plot(1), time_plot(end), p, P, formats)
+% 
+% % Second plot: bar plot OLinLASSO
+% nexttile
+% formats = {fsz, fszl, fszg, lwdt, c_olin, c_inc, c_true, 'OLinLASSO'};
+% bar_plots(stats_olin(:, time_plot), time_plot(1), time_plot(end), p, P, formats)
+% hold on
+% 
+% % Third plot: bar plot OCCD
+% nexttile
+% formats = {fsz, fszl, fszg, lwdt, c_lasso, c_inc, c_true, 'OCCD-TWL'};
+% bar_plots(stats_occd(:, time_plot),  time_plot(1), time_plot(end), p, P, formats)
+% hold on
+% 
+% % Third plot: MSE on Test Data
+% nexttile
+% hold on
+% plot(mse_lasso(time_plot), 'Color', 'k', 'LineWidth', lwd_ms-1)
+% plot(mse_occd(time_plot), 'Color', c_lasso, 'LineWidth', lwd_ms-1)
+% plot(mse_olin(time_plot), 'Color', c_olin, 'LineWidth', lwd_ms, 'LineStyle', '-.')
+% plot(mse_prop(time_plot), 'Color', c_olasso, 'LineWidth', lwd_ms, 'LineStyle', '--')
+% hold off
+% ylim([0,7])
+% set(gca, 'FontSize', fszg)
+% ylabel('MSE on Test Data', 'FontSize', fsz)
+% legend('LASSO','OCCD-TWL', 'OLinLASSO', 'Proposed Online LASSO', 'FontSize', fszl)
+% 
+% % Fourth plot: F-Score
+% nexttile
+% hold on
+% plot(fs_lasso(time_plot), 'Color', 'k', 'LineWidth', lwd_ms-1)
+% plot(fs_occd(time_plot), 'Color', c_lasso, 'LineWidth', lwd_ms-1)
+% plot(fs_olin(time_plot), 'Color', c_olin, 'LineWidth', lwd_ms, 'LineStyle', '-.')
+% plot(fs_prop(time_plot), 'Color', c_olasso, 'LineWidth',lwd_ms, 'LineStyle', '--')
+% hold off
+% ylim([0.5, 1])
+% set(gca, 'FontSize', fszg)
+% ylabel('F-Score', 'FontSize', fsz)
+% xlabel('n^{th} data point arrival', 'FontSize', fsz)
+% legend('LASSO', 'OCCD-TWL', 'OLinLASSO', 'Proposed Online LASSO', 'FontSize',  fszl)
+
+%%
+
+figure;
+%set(gcf, 'Position', [100, 30, 400, 1200]);
 
 % Tiled layout for tighter subplots
-tiledlayout(5, 1, 'TileSpacing', 'Compact', 'Padding', 'Compact')
-
+t = tiledlayout(2, 3, 'TileSpacing', 'Compact', 'Padding', 'Compact');
 
 % First plot: bar plot Proposed Online LASSO
-nexttile
+nexttile(1)
 formats = {fsz, fszl, fszg, lwdt, c_olasso, c_inc, c_true, 'Proposed Online LASSO'};
 bar_plots(stats_prop(:, time_plot), time_plot(1), time_plot(end), p, P, formats)
 
 % Second plot: bar plot OLinLASSO
-nexttile
+nexttile(2)
 formats = {fsz, fszl, fszg, lwdt, c_olin, c_inc, c_true, 'OLinLASSO'};
 bar_plots(stats_olin(:, time_plot), time_plot(1), time_plot(end), p, P, formats)
 hold on
 
 % Third plot: bar plot OCCD
-nexttile
+nexttile(3)
 formats = {fsz, fszl, fszg, lwdt, c_lasso, c_inc, c_true, 'OCCD-TWL'};
 bar_plots(stats_occd(:, time_plot),  time_plot(1), time_plot(end), p, P, formats)
 hold on
 
 % Third plot: MSE on Test Data
-nexttile
+nexttile(4)
 hold on
 plot(mse_lasso(time_plot), 'Color', 'k', 'LineWidth', lwd_ms-1)
 plot(mse_occd(time_plot), 'Color', c_lasso, 'LineWidth', lwd_ms-1)
@@ -137,7 +189,7 @@ ylabel('MSE on Test Data', 'FontSize', fsz)
 legend('LASSO','OCCD-TWL', 'OLinLASSO', 'Proposed Online LASSO', 'FontSize', fszl)
 
 % Fourth plot: F-Score
-nexttile
+nexttile(5, [1,1.5])
 hold on
 plot(fs_lasso(time_plot), 'Color', 'k', 'LineWidth', lwd_ms-1)
 plot(fs_occd(time_plot), 'Color', c_lasso, 'LineWidth', lwd_ms-1)
@@ -149,5 +201,4 @@ set(gca, 'FontSize', fszg)
 ylabel('F-Score', 'FontSize', fsz)
 xlabel('n^{th} data point arrival', 'FontSize', fsz)
 legend('LASSO', 'OCCD-TWL', 'OLinLASSO', 'Proposed Online LASSO', 'FontSize',  fszl)
-
 

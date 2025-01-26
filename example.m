@@ -7,12 +7,12 @@ addpath(genpath('util/'), genpath('proposed_method/'))
 
 % GENERATE SYNTHETIC DATA
 % Settings
-var_y = 1;              % Observation noise Variance
-ps = 5;                 % Number of 0s in theta
+var_y = 0.1;            % Observation noise Variance
+ps = 10;                % Number of 0s in theta
 P = 20;                 % Number of available features
-var_features = 1;       % Variance of input features X
+var_features = 3;       % Variance of input features X
 var_theta = 1;          % Variance of theta
-N = 1000;                % Number of training data points
+N = 5000;               % Number of training data points
 N_test = 300;           % Number of test data points
 p = P - ps;             % True model dimension
 
@@ -20,6 +20,8 @@ p = P - ps;             % True model dimension
 n0 = 0;
 
 % Create data
+% y - label
+% X - feature matrix (Phi in paper)
 [y, X, theta, y_test, X_test] = generate_data(N, N_test, P, var_features, var_theta,  ps, var_y);
 idx_h = find(theta ~= 0)';
 
@@ -30,8 +32,8 @@ idx_h = find(theta ~= 0)';
 theta_prop = zeros(P,1);
 
 % Define initial terms
-xy = zeros(P,1);
-xx = zeros(1,P);
+v = zeros(P,1);
+d = zeros(1,P);
 
 % Denominators for each feature
 for j = 1:P
@@ -50,7 +52,7 @@ for n = n0+1 : N
     yn = y(n);
 
     % Call proposed method
-    [theta_prop, xx, xy] = online_lasso(yn, Xn, xx, xy, theta_prop, all_but_j, var_y, P);
+    [theta_prop, d, v, lambda(n)] = online_lasso(yn, Xn, d, v, theta_prop, all_but_j, var_y, P);
 
     % Evaluate models
     [correct_prop(n-n0), incorrect_prop(n-n0), mse_prop(n-n0), fs_prop(n-n0)] = metrics(theta_prop, theta, P, idx_h, y_test, X_test);
@@ -98,5 +100,4 @@ formats = {fsz, fszl, fszg, lwdt, c_olasso, c_inc, c_true, ''};
 bar_plots(stats_prop, n0+1, N, p, P, formats)
 
 sgtitle('Proposed Online LASSO', 'FontSize', fsz)
-
 

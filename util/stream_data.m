@@ -1,4 +1,4 @@
-function [mse, fs, mst, stats] = stream_data(y, X, var_y, n0,N, K, idx_nonzeros, theta, y_test, X_test)
+function [mse, fs, mst, stats] = stream_data(y, X, var_y, n0, N, P, idx_nonzeros, theta, y_test, X_test)
 
 
 %% OLinLASSO init    
@@ -22,24 +22,24 @@ function [mse, fs, mst, stats] = stream_data(y, X, var_y, n0,N, K, idx_nonzeros,
     epsilon = 1e-3;
 
     % Initialize terms
-    xy_olin = zeros(K,1);
-    xx_olin = zeros(K,K);
+    xy_olin = zeros(P,1);
+    xx_olin = zeros(P,P);
 
 
     %% PROPOSED METHOD Initialize
-    xy = zeros(1,K);
-    xx = zeros(1,K);
-    theta_prop = zeros(K,1);
+    v = zeros(1,P);
+    d = zeros(1,P);
+    theta_prop = zeros(P,1);
 
     %% OCCD Initialize
-    rn = zeros(1,K);
-    Rn = zeros(K,K);
-    theta_occd = zeros(K,1);
+    rn = zeros(1,P);
+    Rn = zeros(P,P);
+    theta_occd = zeros(P,1);
 
     %% Indices variable
-    for j = 1:K
+    for j = 1:P
        % Indexes of all elements except jth
-       all_but_j{j} = setdiff(1:K, j);
+       all_but_j{j} = setdiff(1:P, j);
     end
 
     %% Stream data
@@ -51,28 +51,28 @@ function [mse, fs, mst, stats] = stream_data(y, X, var_y, n0,N, K, idx_nonzeros,
         yn = y(n);
 
         % Call proposed online predictive lasso
-        [theta_prop, xx, xy] = online_lasso(yn, Xn, xx, xy, theta_prop, all_but_j, var_y, K);
+        [theta_prop, d, v] = online_lasso(yn, Xn, d, v, theta_prop, all_but_j, var_y, P);
 
 
         % Call online linearized lasso
         if n > n0
-            [theta_olin,  xx_olin, xy_olin] = olin_lasso(yn, Xn, xy0, xx0, xy_olin, xx_olin, theta_olin, epsilon, step, n0, n, K);
+            [theta_olin,  xx_olin, xy_olin] = olin_lasso(yn, Xn, xy0, xx0, xy_olin, xx_olin, theta_olin, epsilon, step, n0, n, P);
         end
 
         % OCCD
-        [theta_occd, rn, Rn] = occd(yn, Xn, rn, Rn, n, K, theta_occd, all_but_j, var_y);
+        [theta_occd, rn, Rn] = occd(yn, Xn, rn, Rn, n, P, theta_occd, all_but_j, var_y);
 
 
         % Evaluate models
-        [correct_prop(n), incorrect_prop(n), mse_prop(n), fs_prop(n),mst_prop(n)] = metrics(theta_prop, theta, K, idx_nonzeros, y_test, X_test);
-        [correct_olin(n), incorrect_olin(n), mse_olin(n), fs_olin(n),mst_olin(n)] = metrics(theta_olin, theta, K, idx_nonzeros, y_test, X_test);
-        [correct_occd(n), incorrect_occd(n), mse_occd(n), fs_occd(n), mst_occd(n)] = metrics(theta_occd, theta, K, idx_nonzeros, y_test, X_test);
+        [correct_prop(n), incorrect_prop(n), mse_prop(n), fs_prop(n),mst_prop(n)] = metrics(theta_prop, theta, P, idx_nonzeros, y_test, X_test);
+        [correct_olin(n), incorrect_olin(n), mse_olin(n), fs_olin(n),mst_olin(n)] = metrics(theta_olin, theta, P, idx_nonzeros, y_test, X_test);
+        [correct_occd(n), incorrect_occd(n), mse_occd(n), fs_occd(n), mst_occd(n)] = metrics(theta_occd, theta, P, idx_nonzeros, y_test, X_test);
 
         % Standard LASSO - uses all points UP to n OFFLINE
         if n == N
             [theta_lasso, STATS] = lasso(X(1:n,:), y(1:n), 'CV', min(10, n));
             theta_lasso = theta_lasso(:,STATS.Index1SE);
-            [correct_lasso, incorrect_lasso, mse_lasso, fs_lasso, mst_lasso] = metrics(theta_lasso, theta, K, idx_nonzeros, y_test, X_test);
+            [correct_lasso, incorrect_lasso, mse_lasso, fs_lasso, mst_lasso] = metrics(theta_lasso, theta, P, idx_nonzeros, y_test, X_test);
         end
     end
 

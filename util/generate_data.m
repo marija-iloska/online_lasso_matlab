@@ -14,14 +14,9 @@ theta(j) = 0;
 
 % Create basis functions and data
 X = zeros(N_total, P);
-%vec = 0.5.^abs((ones(1,P) - (1:P)));
 
-%Sigma_features = toeplitz(vec);
-
-
-Sigma_features = var_features*eye(P);
 for n = 1:N_total
-    X(n,:) = mvnrnd(zeros(1,P), Sigma_features);
+    X(n,:) = mvnrnd(zeros(1,P), var_features*eye(P));
 end
 
 % Generate linear model with Gaussian noise
