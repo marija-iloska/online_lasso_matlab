@@ -3,7 +3,7 @@
 Note: A Python implementation can be found [here](https://github.com/marija-iloska/online_lasso_python).
 
 
-This code is a MATLAB implementation of our ICASSP 2025 paper by the name "Fast Sparse Learning from Streaming Data with LASSO". The proposed method is very easy to implement and we provide an example script how to run, as well as a script that reproduces the figures in the paper. We remark that the proposed method converges only for uncorrelated features.
+This code is a MATLAB implementation of our ICASSP 2025 paper by the name [Fast Sparse Learning from Streaming Data with LASSO](https://ieeexplore.ieee.org/abstract/document/10888851?casa_token=Dusif4LLUc0AAAAA:ck32s98B2ct-hkafNyZdiAJ-6hX8D8xVBerTTUbwCLZI2MLEhwFJSv2I2nL50RrCbTtAjHaR9Po). The proposed method is very easy to implement and we provide an example script how to run, as well as a script that reproduces the figures in the paper. We remark that the proposed method converges only for uncorrelated features.
 
 
 ## Code
